@@ -3,7 +3,9 @@ const port = process.env.PORT ? (process.env.PORT - 100) : 3000;
 
 process.env.ELECTRON_START_URL = `http://localhost:${port}`;
 
+console.log("1");
 const client = new net.Socket();
+console.log("2");
 
 let startedElectron = false;
 const tryConnection = () => client.connect({port: port}, () => {
@@ -20,5 +22,5 @@ const tryConnection = () => client.connect({port: port}, () => {
 tryConnection();
 
 client.on('error', (error) => {
-    setTimeout(tryConnection, 1000);
+    console.log(error);
 });

@@ -8,18 +8,18 @@
     "react-scripts": "0.8.5"
   },
   "dependencies": {
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0"
   },
   "main": "src/electron-starter.js",
   "homepage": "./",
   "scripts": {
-    "start": "npx react-scripts start",
+    "start": "npx react-scripts start ",
     "build": "npx react-scripts build",
     "test": "npx react-scripts test --env=jsdom",
     "eject": "npx react-scripts eject",
-    "electron": "electron .",
-    "electron-dev": "ELECTRON_START_URL=https://localhost:3000 electron .",
+    "electron": "electron",
+    "electron-dev": "set ELECTRON_START_URL=https://localhost:3000 electron .",
     "dev": "nf start"
   },
   "browserslist": {
