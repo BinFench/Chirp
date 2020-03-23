@@ -1,37 +1,54 @@
 class Wave {
   constructor(audio, type = "sine", real = [], imag = []) {
-    const oscillatorGainNode = audio.context.createGain();
-    oscillatorGainNode.gain.setValueAtTime(1, audio.context.currentTime);
-    oscillatorGainNode.connect(audio.masterGainNode);
+    this.audio = audio;
+    this.oscillatorGainNode = audio.context.createGain();
+    this.oscillatorGainNode.gain.setValueAtTime(1, audio.context.currentTime);
+    this.oscillatorGainNode.connect(audio.masterGainNode);
 
-    const oscillatorNode = Audio.context.createOscillator();
+    this.oscillatorNode = audio.context.createOscillator();
 
     if (type === "custom") {
       var wave = audio.context.createPeriodicWave(real, imag);
-      oscillatorNode.setPeriodicWave(wave);
+      this.oscillatorNode.setPeriodicWave(wave);
     }
 
-    this.osc = {
-      oscillatorNode: oscillatorNode,
-      oscillatorGainNode: oscillatorGainNode,
-      detune: 0,
-      detuneType: "hz",
-      type: type,
-      gain: 1
-    };
+    this.detune = 0;
+    this.detuneType = "hz";
+    this.type = type;
+    this.gain = 1;
+    this.oscillatorNode.type = this.type;
 
-    oscillatorNode.connect(oscillatorGainNode);
+    this.oscillatorNode.connect(this.oscillatorGainNode);
+    this.oscillatorNode.start();
   }
 
-  play() {
-    this.osc.oscillatorNode.start();
+  play(freq) {
+    this.oscillatorNode.frequency.setValueAtTime(
+      freq + this.detune,
+      this.audio.context.currentTime
+    );
+    this.audio.masterGainNode.gain.setTargetAtTime(
+      this.gain,
+      this.audio.context.currentTime,
+      0.001
+    );
   }
 
   pause() {
-    this.osc.oscillatorNode.stop();
+    this.audio.masterGainNode.gain.setTargetAtTime(
+      0,
+      this.audio.context.currentTime,
+      0.001
+    );
+  }
+
+  stop() {
+    this.oscillatorNode.stop();
   }
 
   remove() {
-    this.osc.oscillatorNode.disconnect();
+    this.oscillatorNode.disconnect();
   }
 }
+
+export default Wave;

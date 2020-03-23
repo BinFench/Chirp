@@ -18,7 +18,7 @@
     "build": "npx react-scripts build",
     "test": "npx react-scripts test --env=jsdom",
     "eject": "npx react-scripts eject",
-    "electron": "electron",
+    "electron": "electron .",
     "electron-dev": "set ELECTRON_START_URL=https://localhost:3000 electron .",
     "dev": "nf start"
   },
