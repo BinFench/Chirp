@@ -2,7 +2,7 @@ class Wave {
   constructor(audio, type = "sine", real = [], imag = []) {
     this.audio = audio;
     this.oscillatorGainNode = audio.context.createGain();
-    this.oscillatorGainNode.gain.setValueAtTime(1, audio.context.currentTime);
+    this.oscillatorGainNode.gain.setValueAtTime(0, audio.context.currentTime);
     this.oscillatorGainNode.connect(audio.masterGainNode);
 
     this.oscillatorNode = audio.context.createOscillator();
@@ -16,6 +16,8 @@ class Wave {
     this.detuneType = "hz";
     this.type = type;
     this.gain = 1;
+    this.real = real;
+    this.imag = imag;
     this.oscillatorNode.type = this.type;
 
     this.oscillatorNode.connect(this.oscillatorGainNode);
@@ -27,18 +29,16 @@ class Wave {
       freq + this.detune,
       this.audio.context.currentTime
     );
-    this.audio.masterGainNode.gain.setTargetAtTime(
+    this.oscillatorGainNode.gain.setValueAtTime(
       this.gain,
-      this.audio.context.currentTime,
-      0.001
+      this.audio.context.currentTime
     );
   }
 
   pause() {
-    this.audio.masterGainNode.gain.setTargetAtTime(
+    this.oscillatorGainNode.gain.setValueAtTime(
       0,
-      this.audio.context.currentTime,
-      0.001
+      this.audio.context.currentTime
     );
   }
 

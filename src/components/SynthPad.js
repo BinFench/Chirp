@@ -1,6 +1,7 @@
 import React, { PureComponent } from "react";
 import Audio from "../res/Audio";
 import Wave from "../res/Wave";
+import Instrument from "../res/Instrument";
 
 var test;
 
@@ -19,9 +20,8 @@ function getMIDIMessage(midiMessage) {
     test.play(MIDItoHz(midiMessage.data[1]));
   }
   if (midiMessage.data[0] === 128) {
-    test.pause();
+    test.pause(MIDItoHz(midiMessage.data[1]));
   }
-  console.log(midiMessage.data);
 }
 
 function onMIDIFailure() {
@@ -37,11 +37,15 @@ class SynthPad extends PureComponent {
 
   initializeMasterGain = () => {
     Audio.masterGainNode.connect(Audio.context.destination);
-    Audio.masterGainNode.gain.setValueAtTime(0, Audio.context.currentTime);
+    Audio.masterGainNode.gain.setValueAtTime(1, Audio.context.currentTime);
   };
 
   changeMasterVolume = e => {
     this.setState({ masterGainValue: e.target.value / 100 });
+    Audio.masterGainNode.gain.setValueAtTime(
+      this.state.masterGainValue,
+      Audio.context.currentTime
+    );
   };
 
   addOscillatorNode = () => {
@@ -148,7 +152,9 @@ class SynthPad extends PureComponent {
 
   componentDidMount() {
     this.initializeMasterGain();
-    test = new Wave(Audio);
+    //test = new Wave(Audio);
+    test = new Instrument();
+    test.addWave(Audio);
     if (navigator.requestMIDIAccess) {
       console.log("This browser supports WebMIDI!");
     } else {
@@ -158,7 +164,6 @@ class SynthPad extends PureComponent {
   }
 
   render() {
-    console.log("rendering");
     return (
       <div className="synth">
         <button onClick={this.addOscillatorNode}>Add New Oscillator</button>
