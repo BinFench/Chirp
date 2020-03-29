@@ -9,8 +9,9 @@
     "react-scripts": "0.8.5"
   },
   "dependencies": {
-    "react": "^16.13.0",
-    "react-dom": "^16.13.0"
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "semantic-ui": "^2.4.2"
   },
   "main": "src/electron-starter.js",
   "homepage": "./",
