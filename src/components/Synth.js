@@ -22,6 +22,9 @@ function getMIDIMessage(midiMessage) {
   if (midiMessage.data[0] === 128) {
     test.pause(MIDItoHz(midiMessage.data[1]));
   }
+  if (midiMessage.data[0] === 176) {
+    test.bend((midiMessage.data[2] - 64) / -64);
+  }
 }
 
 function onMIDIFailure() {
@@ -32,14 +35,18 @@ export default function Synth() {
   var waveAnalyser;
   var waveBufferLength;
   var waveDataArray;
-  const waveCanvas = React.useRef(null);
+  const waveCanvas = React.useRef("wave");
   var wavectx;
   const waveWidth = 150;
   const waveHeight = 100;
   const audioWidth = 512;
   const audioHeight = 512;
   const waveTypes = ["sine", "square", "sawtooth", "triangle"];
-  const audioCanvas = React.useRef(null);
+  const audioCanvas = React.useRef("audio");
+  var audioAnalyser;
+  var audioBufferLength;
+  var audioDataArray;
+  var audioctx;
 
   const [masterGainValue, setMasterGainValue] = useState(1);
   const [value, setValue] = useState(0);
@@ -47,8 +54,17 @@ export default function Synth() {
   const [waveType, setWaveType] = useState(0);
 
   const initializeMasterGain = () => {
-    Audio.masterGainNode.connect(Audio.context.destination);
+    audioAnalyser = Audio.context.createAnalyser();
+    audioAnalyser.fftSize = 2048;
+    Audio.masterGainNode.connect(audioAnalyser);
+    audioAnalyser.connect(Audio.context.destination);
     Audio.masterGainNode.gain.setValueAtTime(1, Audio.context.currentTime);
+    audioBufferLength = audioAnalyser.frequencyBinCount;
+    audioDataArray = new Uint8Array(audioBufferLength);
+
+    audioctx = audioCanvas.current.getContext("2d");
+    audioctx.clearRect(0, 0, audioWidth, audioHeight);
+    drawAudio();
   };
 
   function drawWave() {
@@ -74,25 +90,26 @@ export default function Synth() {
   }
 
   function drawAudio() {
-    waveAnalyser.getByteTimeDomainData(waveDataArray);
-    wavectx.fillStyle = "rgb(200, 200, 200)";
-    wavectx.fillRect(0, 0, waveWidth, waveHeight);
-    wavectx.lineWidth = 2;
-    wavectx.strokeStyle = "rgb(0, 0, 0)";
-    wavectx.beginPath();
-    let indexPerPixel = waveBufferLength / (waveWidth * 4);
-    for (var x = 0; x < waveWidth; x++) {
-      let v = waveDataArray[Math.round(indexPerPixel * x)] / 128.0;
-      let y = (v * waveHeight) / 2.2 + 5;
+    var drawVisual = requestAnimationFrame(drawAudio);
+    audioAnalyser.getByteTimeDomainData(audioDataArray);
+    audioctx.fillStyle = "rgb(200, 200, 200)";
+    audioctx.fillRect(0, 0, audioWidth, audioHeight);
+    audioctx.lineWidth = 2;
+    audioctx.strokeStyle = "rgb(0, 0, 0)";
+    audioctx.beginPath();
+    let indexPerPixel = audioBufferLength / (audioWidth * 4);
+    for (var x = 0; x < audioWidth; x++) {
+      let v = audioDataArray[Math.round(indexPerPixel * x)] / 128.0;
+      let y = (v * audioHeight) / 2.2 + 5;
 
       if (x === 0) {
-        wavectx.moveTo(x, y);
+        audioctx.moveTo(x, y);
       } else {
-        wavectx.lineTo(x, y);
+        audioctx.lineTo(x, y);
       }
     }
-    wavectx.lineTo(waveCanvas.width, waveCanvas.height / 2);
-    wavectx.stroke();
+    audioctx.lineTo(audioCanvas.width, audioCanvas.height / 2);
+    audioctx.stroke();
   }
 
   useEffect(() => {
@@ -162,7 +179,7 @@ export default function Synth() {
         <label id={"label"}>Master Volume</label>
       </Silver>
       <div id="waveController">
-        <canvas ref={waveCanvas} width={audioWidth} height={audioHeight} />
+        <canvas ref={waveCanvas} width={waveWidth} height={waveHeight} />
         <button
           onClick={() => {
             if (waveType === 0) {
@@ -189,7 +206,7 @@ export default function Synth() {
           <i class="angle double right icon"></i>
         </button>
       </div>
-      <canvas ref={audioCanvas} width={waveWidth} height={waveHeight} />
+      <canvas ref={audioCanvas} width={audioWidth} height={audioHeight} />
     </div>
   );
 }

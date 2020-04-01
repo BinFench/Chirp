@@ -1,5 +1,5 @@
 class Wave {
-  constructor(audio, type = "sine", real = [], imag = []) {
+  constructor(audio, type = "sine", real = [], imag = [], pitchBend = 0) {
     this.audio = audio;
     this.oscillatorGainNode = audio.context.createGain();
     this.oscillatorGainNode.gain.setValueAtTime(0, audio.context.currentTime);
@@ -19,6 +19,7 @@ class Wave {
     this.real = real;
     this.imag = imag;
     this.oscillatorNode.type = this.type;
+    this.pitchBend = pitchBend;
 
     this.oscillatorNode.connect(this.oscillatorGainNode);
     this.oscillatorNode.start();
@@ -26,7 +27,7 @@ class Wave {
 
   play(freq) {
     this.oscillatorNode.frequency.setValueAtTime(
-      freq + this.detune,
+      (freq + this.detune) * Math.pow(0.5, this.pitchBend),
       this.audio.context.currentTime
     );
     this.oscillatorGainNode.gain.setValueAtTime(

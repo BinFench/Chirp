@@ -6,10 +6,11 @@ class Instrument {
     this.gain = 1;
     this.instancePlaying = [];
     this.instanceFreq = [];
+    this.pitchBend = 0;
   }
 
   addWave(audio, type = "sine", real = [], imag = []) {
-    this.waves.push(new Wave(audio, type, real, imag));
+    this.waves.push(new Wave(audio, type, real, imag, this.pitchBend));
     this.waves[this.waves.length - 1].remove();
   }
 
@@ -20,8 +21,11 @@ class Instrument {
         this.waves[i].audio,
         this.waves[i].type,
         this.waves[i].real,
-        this.waves[i].imag
+        this.waves[i].imag,
+        this.pitchBend
       );
+      wave.detune = this.waves[i].detune;
+      wave.detuneType = this.waves[i].detuneType;
       wave.play(freq);
       waves.push(wave);
     }
@@ -38,6 +42,23 @@ class Instrument {
     }
     this.instancePlaying.splice(index, 1);
     this.instanceFreq.splice(index, 1);
+  }
+
+  bend(freq) {
+    this.pitchBend = freq;
+    for (let i = 0; i < this.instancePlaying.length; i++) {
+      for (let j = 0; j < this.instancePlaying[i].length; j++) {
+        let baseFreq =
+          this.instancePlaying[i][j].oscillatorNode.frequency.value /
+            Math.pow(0.5, this.instancePlaying[i][j].pitchBend) -
+          this.instancePlaying[i][j].detune;
+        this.instancePlaying[i][j].pitchBend = freq;
+        this.instancePlaying[i][j].oscillatorNode.frequency.setValueAtTime(
+          (baseFreq + this.instancePlaying[i][j].detune) * Math.pow(0.5, freq),
+          this.instancePlaying[i][j].audio.context.currentTime
+        );
+      }
+    }
   }
 }
 
