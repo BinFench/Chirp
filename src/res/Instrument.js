@@ -9,16 +9,17 @@ class Instrument {
     this.pitchBend = 0;
   }
 
-  addWave(audio, type = "sine", real = [], imag = []) {
-    this.waves.push(new Wave(audio, type, real, imag, this.pitchBend));
+  addWave(audio, gain = 1, type = "sine", real = [], imag = []) {
+    this.waves.push(new Wave(audio, gain, type, real, imag, this.pitchBend));
     this.waves[this.waves.length - 1].remove();
   }
 
-  play(freq) {
+  play(freq, velocity) {
     let waves = [];
     for (let i = 0; i < this.waves.length; i++) {
       let wave = new Wave(
         this.waves[i].audio,
+        this.waves[i].gain,
         this.waves[i].type,
         this.waves[i].real,
         this.waves[i].imag,
@@ -26,7 +27,7 @@ class Instrument {
       );
       wave.detune = this.waves[i].detune;
       wave.detuneType = this.waves[i].detuneType;
-      wave.play(freq);
+      wave.play(freq, velocity);
       waves.push(wave);
     }
     this.instancePlaying.push(waves);

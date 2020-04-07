@@ -1,9 +1,85 @@
 #synth {
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
 #label {
-  margin-left: -10px;
+  margin-left: -5px;
+}
+
+#waveDisp {
+  display: block;
+  top: 0;
+}
+
+#waveSwitcher {
+  display: flex;
+  width: 190px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#waveTypes {
+  width: 56px;
+  max-width: 56px;
+  min-width: 56px;
+  margin: 0 5px 0 5px;
+  display: inline-block;
+  text-align: center;
+}
+
+#waveGainAdd {
+  display: flex;
+  width: 190px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#audioDisp {
+  display: block;
+}
+
+#freqDisp {
+  display: block;
+}
+
+#addWave {
+  background-color: #a31800;
+  width: 36px;
+  height: 36px;
+}
+
+#subWave {
+  background-color: #3260ab;
+  width: 36px;
+  height: 36px;
+}
+
+#whiteIcon {
+  color: white;
+  padding-left: 4px;
+}
+
+#detune {
+  width: 68px;
+  height: 36px;
+}
+
+#detuneType {
+  height: 36px;
+}
+
+#wave {
+  background-color: #6d7075;
+  width: 190px;
+}
+
+#selectedWave {
+  background-color: #b9bdc4;
+  width: 190px;
+}
+
+#wavecontainer {
+  height: 816px;
+  overflow-x: auto;
 }

@@ -152,7 +152,6 @@ class SynthPad extends PureComponent {
 
   componentDidMount() {
     this.initializeMasterGain();
-    //test = new Wave(Audio);
     test = new Instrument();
     test.addWave(Audio);
     if (navigator.requestMIDIAccess) {
