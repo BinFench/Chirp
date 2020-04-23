@@ -3,8 +3,16 @@ import Audio from "../res/Audio";
 import Instrument from "../res/Instrument";
 import Wave from "../res/Wave";
 import { Silver } from "react-dial-knob";
+import Filter from "../res/Filter";
 
 var test;
+var freqArray = new Float32Array(19980);
+var freqResp = new Float32Array(19980);
+var phaseResp = new Float32Array(19980);
+
+for (let i = 0; i < 19980; i++) {
+  freqArray[i] = 20 + i;
+}
 
 function MIDItoHz(MIDI) {
   return 440 * Math.pow(2, (MIDI - 69) / 12);
@@ -41,11 +49,25 @@ export default function Synth() {
   var waveDataArray;
   const waveCanvas = React.useRef("wave");
   var wavectx;
+  var filterctx;
   const waveWidth = 190;
   const waveHeight = 100;
-  const audioWidth = 512;
-  const audioHeight = 512;
+  const filterWidth = 200;
+  const filterHeight = 100;
+  const audioWidth = 256;
+  const audioHeight = 256;
   const waveTypes = ["sine", "square", "sawtooth", "triangle"];
+  const filterTypes = [
+    "lowpass",
+    "highpass",
+    "bandpass",
+    "lowshelf",
+    "highshelf",
+    "peaking",
+    "notch",
+    "allpass",
+  ];
+  const filterCanvas = React.useRef("filter");
   const audioCanvas = React.useRef("audio");
   const freqCanvas = React.useRef("freq");
   var audioAnalyser;
@@ -57,11 +79,13 @@ export default function Synth() {
 
   const [masterGainValue, setMasterGainValue] = useState(1);
   const [value, setValue] = useState(0);
-  const [sampleWave, setSampleWave] = useState({});
   const [waveType, setWaveType] = useState(0);
+  const [filterType, setFilterType] = useState(0);
   const [waveIndex, setWaveIndex] = useState(0);
+  const [filterIndex, setFilterIndex] = useState(0);
   const [flicker, setFlicker] = useState(false);
   const [updateWave, setUpdateWave] = useState(false);
+  const [updateFilter, setUpdateFilter] = useState(false);
 
   const initializeMasterGain = () => {
     audioAnalyser = Audio.context.createAnalyser();
@@ -102,6 +126,53 @@ export default function Synth() {
     wavectx.stroke();
   }
 
+  function drawFilter() {
+    test.filters[filterIndex].filter.getFrequencyResponse(
+      freqArray,
+      freqResp,
+      phaseResp
+    );
+    let stopPoint = 0;
+    let average = 0;
+    let max = 0;
+    for (let i = 0; i < 19980; i++) {
+      if (max < freqResp[i]) {
+        max = freqResp[i];
+      }
+      if (freqResp[i] < 0.1) {
+        stopPoint = i;
+        break;
+      }
+    }
+    for (let i = 0; i < 200; i++) {
+      average += freqResp[Math.round((stopPoint / 200) * i)] / 200;
+    }
+    max = (max / average) * 50;
+    for (let i = 0; i < 200; i++) {
+      if (max <= 100) {
+        freqResp[Math.round((stopPoint / 200) * i)] =
+          (freqResp[Math.round((stopPoint / 200) * i)] / average) * 50;
+      } else {
+        freqResp[Math.round((stopPoint / 200) * i)] =
+          (((freqResp[Math.round((stopPoint / 200) * i)] / average) * 50) /
+            (max + 5)) *
+          100;
+      }
+    }
+
+    filterctx.fillStyle = "rgb(0, 0, 0)";
+    filterctx.fillRect(0, 0, filterWidth, filterHeight);
+    for (var i = 0; i < 200; i++) {
+      filterctx.fillStyle = "rgb(255, 0, 0)";
+      filterctx.fillRect(
+        i,
+        100 - freqResp[Math.round((stopPoint / 200) * i)],
+        1,
+        freqResp[Math.round((stopPoint / 200) * i)]
+      );
+    }
+  }
+
   function drawAudio() {
     var drawVisual = requestAnimationFrame(drawAudio);
     audioAnalyser.getByteTimeDomainData(audioDataArray);
@@ -135,7 +206,7 @@ export default function Synth() {
       barHeight = (audioFreqArray[i] * audioHeight) / 255;
 
       freqctx.fillStyle = "rgb(255, 0, 0)";
-      freqctx.fillRect(x, audioHeight - barHeight / 2, barWidth, barHeight);
+      freqctx.fillRect(x, audioHeight - barHeight, barWidth, barHeight);
 
       x += barWidth + 1;
     }
@@ -146,6 +217,7 @@ export default function Synth() {
       initializeMasterGain();
       test = new Instrument();
       test.addWave(Audio);
+      test.addFilter(Audio);
 
       waveAnalyser = Audio.context.createAnalyser();
       waveAnalyser.fftSize = 2048;
@@ -156,9 +228,12 @@ export default function Synth() {
 
       wavectx = waveCanvas.current.getContext("2d");
       wavectx.clearRect(0, 0, waveWidth, waveHeight);
+      filterctx = filterCanvas.current.getContext("2d");
+      filterctx.clearRect(0, 0, filterWidth, filterHeight);
       setTimeout(() => {
         drawWave();
-      }, 50);
+        drawFilter();
+      }, 100);
 
       if (navigator.requestMIDIAccess) {
         console.log("This browser supports WebMIDI!");
@@ -192,6 +267,11 @@ export default function Synth() {
         setTimeout(() => {
           drawWave();
         }, 75);
+      }
+      if (updateFilter) {
+        filterctx = filterCanvas.current.getContext("2d");
+        filterctx.clearRect(0, 0, filterWidth, filterHeight);
+        drawFilter();
       }
     }
   });
@@ -385,6 +465,178 @@ export default function Synth() {
                   {index +
                     " - " +
                     (waveIndex === index ? waveTypes[waveType] : wave.type)}
+                </div>
+              );
+            })
+          ) : (
+            <div></div>
+          )}
+        </div>
+      </div>
+      <div id="filterController">
+        <canvas
+          id="filterDisp"
+          ref={filterCanvas}
+          width={filterWidth}
+          height={filterHeight}
+        />
+        <div id="filterSwitcher">
+          <button
+            onClick={() => {
+              if (filterType === 0) {
+                setFilterType(7);
+              } else {
+                setFilterType(filterType - 1);
+              }
+            }}
+            className="ui button"
+          >
+            <i class="angle double left icon"></i>
+          </button>
+          <div id="filterTypes">
+            <p>{filterTypes[filterType]}</p>
+          </div>
+          <button
+            onClick={() => {
+              if (filterType === 7) {
+                setFilterType(0);
+              } else {
+                setFilterType(filterType + 1);
+              }
+            }}
+            className="ui button"
+          >
+            <i class="angle double right icon"></i>
+          </button>
+        </div>
+        <div id="filterAdd">
+          <button
+            onClick={() => {
+              let filters = test.filtersUsed[waveIndex];
+              if (filters[0] === -1) {
+                filters[0] = filterIndex;
+              } else {
+                if (filters.includes(filterIndex)) {
+                  return;
+                }
+                filters.push(filterIndex);
+              }
+              for (let i = 0; i < test.instancePlaying.length; i++) {
+                let wave = test.instancePlaying[i][waveIndex];
+                let copyFilter = test.filters[filterIndex];
+                let newFilter = new Filter(
+                  Audio,
+                  copyFilter.freq,
+                  copyFilter.type,
+                  copyFilter.detune,
+                  copyFilter.Q,
+                  copyFilter.gain
+                );
+                if (wave.filters.length === 0) {
+                  wave.oscillatorNode.disconnect();
+                }
+                newFilter.filter.connect(wave.oscillatorGainNode);
+                wave.filters.push(newFilter);
+                wave.oscillatorNode.connect(newFilter.filter);
+              }
+            }}
+            className="ui button"
+          >
+            <i class="exchange alternate icon" />
+          </button>
+          <button
+            onClick={() => {
+              let filters = test.filtersUsed[waveIndex];
+              if (!filters.includes(filterIndex)) {
+                return;
+              }
+              let index = filters.indexOf(filterIndex);
+              filters.splice(index, 1);
+              if (filters.length === 0) {
+                filters.push(-1);
+              }
+              for (let i = 0; i < test.instancePlaying.length; i++) {
+                let wave = test.instancePlaying[i][waveIndex];
+                wave.filters[index].filter.disconnect();
+                if (wave.filters.length === 1) {
+                  wave.oscillatorNode.connect(wave.oscillatorGainNode);
+                }
+              }
+            }}
+            className="ui button"
+          >
+            <i class="unlink icon" />
+          </button>
+          <button
+            id="addFilter"
+            onClick={() => {
+              test.addFilter(Audio);
+              setFilterIndex(test.filters.size - 1);
+            }}
+          >
+            <i id="whiteIcon" class="plus icon"></i>
+          </button>
+        </div>
+        <div id="filterSub">
+          <button
+            id="subFilter"
+            onClick={() => {
+              let index = filterIndex;
+              if (test.filters.length === 1) {
+                return;
+              }
+
+              for (let i = 0; i < test.filtersUsed.length; i++) {
+                let numDeleted = 0;
+                for (let j = 0; j < test.filtersUsed[i].length; i++) {
+                  if (test.filtersUsed[i][j] > filterIndex) {
+                    test.filtersUsed[i][j]--;
+                  } else if (
+                    test.filtersUsed[i][j - numDeleted] === filterIndex
+                  ) {
+                    test.filtersUsed[i].splice(j - numDeleted, 1);
+                    numDeleted++;
+                    for (let k = 0; k < test.instancePlaying.length; k++) {
+                      test.instancePlaying[k][i].filters[j].filter.disconnect();
+                      if (test.instancePlaying[k][k].filters.length === 1) {
+                        test.instancePlaying[k][i].oscillatorGainNode.connect(
+                          Audio.masterGainNode
+                        );
+                      }
+                    }
+                  }
+                }
+              }
+              test.filters.splice(filterIndex, 1);
+              if (filterIndex > 0) {
+                setFilterIndex(filterIndex - 1);
+              }
+            }}
+          >
+            <i id="whiteIcon" class="minus icon"></i>
+          </button>
+        </div>
+        <div id="filtercontainer">
+          {test ? (
+            test.filters.map((filter, index) => {
+              return (
+                <div
+                  id={index === filterIndex ? "selectedFilter" : "filter"}
+                  onClick={() => {
+                    if (index === filterIndex) {
+                      return;
+                    }
+                    setFilterIndex(index);
+                    setUpdateFilter(!(filterType === filter.type));
+                    setFilterType(filterTypes.indexOf(filter.type));
+                  }}
+                  className="ui segment"
+                >
+                  {index +
+                    " - " +
+                    (filterIndex === index
+                      ? filterTypes[filterType]
+                      : filter.type)}
                 </div>
               );
             })

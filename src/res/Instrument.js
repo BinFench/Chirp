@@ -1,8 +1,11 @@
-import Wave from "../res/Wave";
+import Wave from "./Wave";
+import Filter from "./Filter";
 
 class Instrument {
   constructor() {
     this.waves = [];
+    this.filters = [];
+    this.filtersUsed = [];
     this.gain = 1;
     this.instancePlaying = [];
     this.instanceFreq = [];
@@ -10,8 +13,23 @@ class Instrument {
   }
 
   addWave(audio, gain = 1, type = "sine", real = [], imag = []) {
-    this.waves.push(new Wave(audio, gain, type, real, imag, this.pitchBend));
+    this.waves.push(
+      new Wave(audio, this.waves.length, gain, type, real, imag, this.pitchBend)
+    );
     this.waves[this.waves.length - 1].remove();
+    this.filtersUsed.push([-1]);
+  }
+
+  addFilter(
+    audio,
+    freq = 1000,
+    type = "lowpass",
+    detune = 0,
+    Q = 1,
+    gain = 25
+  ) {
+    this.filters.push(new Filter(audio, freq, type, detune, Q, gain));
+    this.filters[this.filters.length - 1].remove();
   }
 
   play(freq, velocity) {
@@ -19,11 +37,14 @@ class Instrument {
     for (let i = 0; i < this.waves.length; i++) {
       let wave = new Wave(
         this.waves[i].audio,
+        i,
         this.waves[i].gain,
         this.waves[i].type,
         this.waves[i].real,
         this.waves[i].imag,
-        this.pitchBend
+        this.pitchBend,
+        this.filters,
+        this.filtersUsed
       );
       wave.detune = this.waves[i].detune;
       wave.detuneType = this.waves[i].detuneType;

@@ -35,14 +35,6 @@
   justify-content: space-between;
 }
 
-#audioDisp {
-  display: block;
-}
-
-#freqDisp {
-  display: block;
-}
-
 #addWave {
   background-color: #a31800;
   width: 36px;
@@ -53,6 +45,80 @@
   background-color: #3260ab;
   width: 36px;
   height: 36px;
+}
+
+#wave {
+  background-color: #6d7075;
+  width: 190px;
+  margin: 0;
+}
+
+#selectedWave {
+  background-color: #b9bdc4;
+  width: 190px;
+  margin: 0;
+}
+
+#wavecontainer {
+  height: 304px;
+  overflow-x: auto;
+}
+
+#filterDisp {
+  display: block;
+  top: 0;
+}
+
+#filterSwitcher {
+  display: flex;
+  width: 190px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#filterTypes {
+  width: 56px;
+  max-width: 56px;
+  min-width: 56px;
+  margin: 0 5px 0 5px;
+  display: inline-block;
+  text-align: center;
+}
+
+#filterAdd {
+  display: flex;
+  width: 190px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#addFilter {
+  background-color: #a31800;
+  width: 36px;
+  height: 36px;
+}
+
+#subFilter {
+  background-color: #3260ab;
+  width: 36px;
+  height: 36px;
+}
+
+#filter {
+  background-color: #6d7075;
+  width: 190px;
+  margin: 0;
+}
+
+#selectedFilter {
+  background-color: #b9bdc4;
+  width: 190px;
+  margin: 0;
+}
+
+#filtercontainer {
+  height: 304px;
+  overflow-x: auto;
 }
 
 #whiteIcon {
@@ -69,17 +135,10 @@
   height: 36px;
 }
 
-#wave {
-  background-color: #6d7075;
-  width: 190px;
+#audioDisp {
+  display: block;
 }
 
-#selectedWave {
-  background-color: #b9bdc4;
-  width: 190px;
-}
-
-#wavecontainer {
-  height: 816px;
-  overflow-x: auto;
+#freqDisp {
+  display: block;
 }
