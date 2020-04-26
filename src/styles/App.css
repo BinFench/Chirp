@@ -49,13 +49,13 @@
 
 #wave {
   background-color: #6d7075;
-  width: 190px;
+  width: 180px;
   margin: 0;
 }
 
 #selectedWave {
   background-color: #b9bdc4;
-  width: 190px;
+  width: 180px;
   margin: 0;
 }
 
@@ -71,16 +71,15 @@
 
 #filterSwitcher {
   display: flex;
-  width: 190px;
+  width: 200px;
   align-items: center;
   justify-content: space-between;
 }
 
 #filterTypes {
-  width: 56px;
-  max-width: 56px;
-  min-width: 56px;
-  margin: 0 5px 0 5px;
+  width: 77px;
+  max-width: 77px;
+  min-width: 77px;
   display: inline-block;
   text-align: center;
 }
@@ -116,8 +115,8 @@
   margin: 0;
 }
 
-#filtercontainer {
-  height: 304px;
+#filterContainer {
+  height: 256px;
   overflow-x: auto;
 }
 
@@ -131,6 +130,23 @@
   height: 36px;
 }
 
+#filterFreq {
+  width: 77px;
+  height: 36px;
+}
+
+#filterQ {
+  width: 68px;
+  height: 36px;
+  margin-left: 5px;
+}
+
+#filterGain {
+  width: 68px;
+  height: 36px;
+  margin-left: 5px;
+}
+
 #detuneType {
   height: 36px;
 }
@@ -141,4 +157,25 @@
 
 #freqDisp {
   display: block;
+}
+
+#filterLink {
+  margin: 0;
+}
+
+#filterLeft {
+  margin: 0;
+}
+
+#optionalContainer {
+  display: inline-block;
+  margin-left: 3px;
+}
+
+#container {
+  display: inline-block;
+}
+
+#filterSub {
+  margin-bottom: 8px;
 }

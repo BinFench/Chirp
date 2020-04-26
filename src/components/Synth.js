@@ -6,7 +6,7 @@ import { Silver } from "react-dial-knob";
 import Filter from "../res/Filter";
 
 var test;
-var freqArray = new Float32Array(19980);
+const freqArray = new Float32Array(19980);
 var freqResp = new Float32Array(19980);
 var phaseResp = new Float32Array(19980);
 
@@ -132,44 +132,20 @@ export default function Synth() {
       freqResp,
       phaseResp
     );
-    let stopPoint = 0;
-    let average = 0;
+
     let max = 0;
-    for (let i = 0; i < 19980; i++) {
-      if (max < freqResp[i]) {
-        max = freqResp[i];
-      }
-      if (freqResp[i] < 0.1) {
-        stopPoint = i;
-        break;
-      }
-    }
-    for (let i = 0; i < 200; i++) {
-      average += freqResp[Math.round((stopPoint / 200) * i)] / 200;
-    }
-    max = (max / average) * 50;
-    for (let i = 0; i < 200; i++) {
-      if (max <= 100) {
-        freqResp[Math.round((stopPoint / 200) * i)] =
-          (freqResp[Math.round((stopPoint / 200) * i)] / average) * 50;
-      } else {
-        freqResp[Math.round((stopPoint / 200) * i)] =
-          (((freqResp[Math.round((stopPoint / 200) * i)] / average) * 50) /
-            (max + 5)) *
-          100;
+    for (var i = 0; i < 200; i++) {
+      if (max < freqResp[Math.round((19959 / 200) * i)]) {
+        max = freqResp[Math.round((19959 / 200) * i)];
       }
     }
 
     filterctx.fillStyle = "rgb(0, 0, 0)";
     filterctx.fillRect(0, 0, filterWidth, filterHeight);
     for (var i = 0; i < 200; i++) {
+      let value = (freqResp[Math.round((19959 / 200) * i)] / max) * 95;
       filterctx.fillStyle = "rgb(255, 0, 0)";
-      filterctx.fillRect(
-        i,
-        100 - freqResp[Math.round((stopPoint / 200) * i)],
-        1,
-        freqResp[Math.round((stopPoint / 200) * i)]
-      );
+      filterctx.fillRect(i, 100 - value, 1, value);
     }
   }
 
@@ -268,7 +244,20 @@ export default function Synth() {
           drawWave();
         }, 75);
       }
-      if (updateFilter) {
+      let filter = test.filters[filterIndex];
+      if (filter.type !== filterTypes[filterType] || updateFilter) {
+        filter.type = filterTypes[filterType];
+        setUpdateFilter(false);
+        filter.filter.type = filterTypes[filterType];
+        for (let i = 0; i < test.filtersUsed.length; i++) {
+          if (test.filtersUsed[i].includes(filterIndex)) {
+            let index = test.filtersUsed[i].indexOf(filterIndex);
+            for (let j = 0; j < test.instancePlaying.length; j++) {
+              test.instancePlaying[j][i].filters[index].filter.type =
+                filterTypes[filterType];
+            }
+          }
+        }
         filterctx = filterCanvas.current.getContext("2d");
         filterctx.clearRect(0, 0, filterWidth, filterHeight);
         drawFilter();
@@ -482,6 +471,7 @@ export default function Synth() {
         />
         <div id="filterSwitcher">
           <button
+            id="filterLeft"
             onClick={() => {
               if (filterType === 0) {
                 setFilterType(7);
@@ -511,6 +501,7 @@ export default function Synth() {
         </div>
         <div id="filterAdd">
           <button
+            id="filterLink"
             onClick={() => {
               let filters = test.filtersUsed[waveIndex];
               if (filters[0] === -1) {
@@ -544,6 +535,27 @@ export default function Synth() {
           >
             <i class="exchange alternate icon" />
           </button>
+          <input
+            id="filterFreq"
+            type="number"
+            value={test ? test.filters[filterIndex].freq : 1000}
+            onChange={(e) => {
+              setUpdateFilter(true);
+              let value = parseInt(e.target.value);
+              test.filters[filterIndex].freq = value;
+              test.filters[filterIndex].filter.frequency.value = value;
+              for (let i = 0; i < test.filtersUsed.length; i++) {
+                if (test.filtersUsed[i].includes(filterIndex)) {
+                  let index = test.filtersUsed[i].indexOf(filterIndex);
+                  for (let j = 0; j < test.instancePlaying.length; j++) {
+                    test.instancePlaying[j][i].filters[
+                      index
+                    ].filter.frequency.value = value;
+                  }
+                }
+              }
+            }}
+          />
           <button
             onClick={() => {
               let filters = test.filtersUsed[waveIndex];
@@ -567,17 +579,86 @@ export default function Synth() {
           >
             <i class="unlink icon" />
           </button>
+        </div>
+        <div id="filterSub">
+          {test ? (
+            filterTypes[filterType] !== "lowshelf" &&
+            filterTypes[filterType] !== "highshelf" ? (
+              <div id="container">
+                <h5 id="optionalContainer">{"Q: "}</h5>
+                <input
+                  id="filterQ"
+                  type="number"
+                  value={test ? test.filters[filterIndex].Q : 1}
+                  onChange={(e) => {
+                    setUpdateFilter(true);
+                    let value = parseInt(e.target.value);
+                    test.filters[filterIndex].Q = value;
+                    test.filters[filterIndex].filter.Q.value = value;
+                    for (let i = 0; i < test.filtersUsed.length; i++) {
+                      if (test.filtersUsed[i].includes(filterIndex)) {
+                        let index = test.filtersUsed[i].indexOf(filterIndex);
+                        for (let j = 0; j < test.instancePlaying.length; j++) {
+                          test.instancePlaying[j][i].filters[
+                            index
+                          ].filter.Q.value = value;
+                        }
+                      }
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div />
+            )
+          ) : (
+            <div />
+          )}
+          {test ? (
+            filterTypes[filterType] === "lowshelf" ||
+            filterTypes[filterType] === "highshelf" ||
+            filterTypes[filterType] === "peaking" ? (
+              <div id="container">
+                <h5 id="optionalContainer">{"Gain: "}</h5>
+                <input
+                  id="filterGain"
+                  type="number"
+                  value={test ? test.filters[filterIndex].gain : 1}
+                  onChange={(e) => {
+                    setUpdateFilter(true);
+                    let value = parseInt(e.target.value);
+                    test.filters[filterIndex].gain = value;
+                    test.filters[filterIndex].filter.gain.value = value;
+                    for (let i = 0; i < test.filtersUsed.length; i++) {
+                      if (test.filtersUsed[i].includes(filterIndex)) {
+                        let index = test.filtersUsed[i].indexOf(filterIndex);
+                        for (let j = 0; j < test.instancePlaying.length; j++) {
+                          test.instancePlaying[j][i].filters[
+                            index
+                          ].filter.gain.value = value;
+                        }
+                      }
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div />
+            )
+          ) : (
+            <div />
+          )}
+        </div>
+        <div id="filterAddSub">
           <button
             id="addFilter"
             onClick={() => {
               test.addFilter(Audio);
-              setFilterIndex(test.filters.size - 1);
+              setFilterIndex(test.filters.length - 1);
             }}
           >
             <i id="whiteIcon" class="plus icon"></i>
           </button>
-        </div>
-        <div id="filterSub">
           <button
             id="subFilter"
             onClick={() => {
@@ -588,7 +669,7 @@ export default function Synth() {
 
               for (let i = 0; i < test.filtersUsed.length; i++) {
                 let numDeleted = 0;
-                for (let j = 0; j < test.filtersUsed[i].length; i++) {
+                for (let j = 0; j < test.filtersUsed[i].length; j++) {
                   if (test.filtersUsed[i][j] > filterIndex) {
                     test.filtersUsed[i][j]--;
                   } else if (
@@ -616,7 +697,7 @@ export default function Synth() {
             <i id="whiteIcon" class="minus icon"></i>
           </button>
         </div>
-        <div id="filtercontainer">
+        <div id="filterContainer">
           {test ? (
             test.filters.map((filter, index) => {
               return (

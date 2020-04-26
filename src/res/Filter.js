@@ -11,13 +11,13 @@ class Filter {
     this.filter = audio.context.createBiquadFilter();
     this.filter.type = type;
     this.type = type;
-    this.filter.frequency.setValueAtTime(freq, audio.context.currentTime);
+    this.filter.frequency.value = freq;
     this.freq = freq;
-    this.filter.detune.setValueAtTime(detune, audio.context.currentTime);
+    this.filter.detune.value = detune;
     this.detune = detune;
-    this.filter.Q.setValueAtTime(Q, audio.context.currentTime);
+    this.filter.Q.value = Q;
     this.Q = Q;
-    this.filter.gain.setValueAtTime(gain, audio.context.currentTime);
+    this.filter.gain.value = gain;
     this.gain = gain;
   }
 
