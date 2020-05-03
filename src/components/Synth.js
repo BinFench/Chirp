@@ -9,6 +9,8 @@ var test;
 const freqArray = new Float32Array(19980);
 var freqResp = new Float32Array(19980);
 var phaseResp = new Float32Array(19980);
+var expanded = [true];
+var isRemoving = false;
 
 for (let i = 0; i < 19980; i++) {
   freqArray[i] = 20 + i;
@@ -50,13 +52,16 @@ export default function Synth() {
   const waveCanvas = React.useRef("wave");
   var wavectx;
   var filterctx;
-  const waveWidth = 190;
+  var envelopectx;
+  const waveWidth = 200;
   const waveHeight = 100;
   const filterWidth = 200;
   const filterHeight = 100;
+  const envelopeWidth = 200;
+  const envelopeHeight = 100;
   const audioWidth = 256;
   const audioHeight = 256;
-  const waveTypes = ["sine", "square", "sawtooth", "triangle"];
+  const waveTypes = ["sine", "square", "sawtooth", "triangle", "custom"];
   const filterTypes = [
     "lowpass",
     "highpass",
@@ -67,7 +72,26 @@ export default function Synth() {
     "notch",
     "allpass",
   ];
+  const rampTypes = [
+    "const",
+    "linear",
+    "exponential",
+    "curve"
+  ];
+  const elemTypes = [
+    "wave", "filter", "LFO"
+  ];
+  const waveParams = [
+    "gain", "detune"
+  ];
+  const filterParams = [
+    "gain", "Q", "detune"
+  ]
+  const LFOParams = [
+    "gain", "detune"
+  ];
   const filterCanvas = React.useRef("filter");
+  const envelopeCanvas = React.useRef("envelope");
   const audioCanvas = React.useRef("audio");
   const freqCanvas = React.useRef("freq");
   var audioAnalyser;
@@ -81,11 +105,20 @@ export default function Synth() {
   const [value, setValue] = useState(0);
   const [waveType, setWaveType] = useState(0);
   const [filterType, setFilterType] = useState(0);
+  const [rampType, setRampType] = useState(1);
   const [waveIndex, setWaveIndex] = useState(0);
   const [filterIndex, setFilterIndex] = useState(0);
+  const [envelopeIndex, setEnvelopeIndex] = useState(0);
+  const [rampIndex, setRampIndex] = useState(0);
   const [flicker, setFlicker] = useState(false);
   const [updateWave, setUpdateWave] = useState(false);
   const [updateFilter, setUpdateFilter] = useState(false);
+  const [updateEnvelope, setUpdateEnvelope] = useState(false);
+  const [elemType, setElemType] = useState(0);
+  const [waveParam, setWaveParam] = useState(0);
+  const [filterParam, setFilterParam] = useState(0);
+  const [LFOParam, setLFOParam] = useState(0);
+  const [elemIndex, setElemIndex] = useState(0);
 
   const initializeMasterGain = () => {
     audioAnalyser = Audio.context.createAnalyser();
@@ -149,8 +182,79 @@ export default function Synth() {
     }
   }
 
+  function drawEnvelope() {
+    var drawVisual = requestAnimationFrame(drawAudio);
+    let envelope = test.envelopes[envelopeIndex];
+    let totalTime = 0;
+    let x = 0;
+    let y = envelope.initialValue * 95;
+    for (let i = 0; i < envelope.ramps.length; i++) {
+      totalTime += envelope.ramps[i].time;
+    }
+    envelopectx.lineWidth = 2;
+    envelopectx.strokeStyle = "rgb(0, 0, 0)";
+    envelopectx.beginPath();
+    envelopectx.moveTo(x, 100 - y);
+    for (let i = 0; i < envelope.ramps.length; i++) {
+      let ramp = envelope.ramps[i];
+      if (i === rampIndex) {
+        envelopectx.fillStyle = "rgb(230, 230, 230)";
+      } else {
+        envelopectx.fillStyle = "rgb(200, 200, 200)";
+      }
+      envelopectx.fillRect(x, 0, Math.ceil((ramp.time / totalTime) * 200), 100);
+      switch (ramp.type) {
+        case "const":
+          envelopectx.lineTo(x + Math.round((ramp.time / totalTime) * 200), 100 - y);
+          envelopectx.lineTo(x + Math.round((ramp.time / totalTime) * 200), 100 - (ramp.value * 95));
+          break;
+        case "linear":
+          envelopectx.lineTo(x + Math.round((ramp.time / totalTime) * 200), 100 - (ramp.value * 95));
+          break;
+        case "exponential":
+          let constant = 0;
+          let exp_y = 0;
+          let base = 0;
+          if (y < ramp.value * 95) {
+            constant = Math.max(y, 1);
+            exp_y = ramp.value * 95;
+            base = exp_y / constant;
+          } else {
+            constant = 100 - y;
+            exp_y = 100 - ramp.value * 95;
+            base = exp_y / constant
+          }
+          for (let j = 0; j < Math.round((ramp.time / totalTime) * 200); j++) {
+            if (y < ramp.value * 95) {
+              envelopectx.lineTo(x + j, 100 - ((constant * Math.pow(base, j / Math.round((ramp.time / totalTime) * 200)))));
+            } else if (y > ramp.value * 95) {
+              envelopectx.lineTo(x + j, (constant * Math.pow(base, j / Math.round((ramp.time / totalTime) * 200))));
+            } else {
+              envelopectx.lineTo(x + j, 100 - y);
+            }
+          }
+          break;
+        case "curve":
+          let indexPerPixel = ramp.values.length / Math.round((ramp.time / totalTime) * 200);
+          for (let j = 0; j < Math.round((ramp.time / totalTime) * 200); j++) {
+            envelopectx.lineTo(x + j, 100 - (ramp.values[Math.round(indexPerPixel * j)] * 95));
+          }
+          break;
+        default:
+          break;
+      }
+      envelopectx.lineTo(x + Math.round((ramp.time / totalTime) * 200), 100 - (ramp.value * 95));
+      x += Math.round((ramp.time / totalTime) * 200);
+      y = ramp.value * 95;
+    }
+    envelopectx.stroke();
+  }
+
   function drawAudio() {
     var drawVisual = requestAnimationFrame(drawAudio);
+    if (!audioAnalyser) {
+      return;
+    }
     audioAnalyser.getByteTimeDomainData(audioDataArray);
     audioctx.fillStyle = "rgb(200, 200, 200)";
     audioctx.fillRect(0, 0, audioWidth, audioHeight);
@@ -194,6 +298,7 @@ export default function Synth() {
       test = new Instrument();
       test.addWave(Audio);
       test.addFilter(Audio);
+      test.addEnvelope(Audio);
 
       waveAnalyser = Audio.context.createAnalyser();
       waveAnalyser.fftSize = 2048;
@@ -206,9 +311,12 @@ export default function Synth() {
       wavectx.clearRect(0, 0, waveWidth, waveHeight);
       filterctx = filterCanvas.current.getContext("2d");
       filterctx.clearRect(0, 0, filterWidth, filterHeight);
+      envelopectx = envelopeCanvas.current.getContext("2d");
+      envelopectx.clearRect(0, 0, envelopeWidth, envelopeHeight);
       setTimeout(() => {
         drawWave();
         drawFilter();
+        drawEnvelope();
       }, 100);
 
       if (navigator.requestMIDIAccess) {
@@ -261,6 +369,15 @@ export default function Synth() {
         filterctx = filterCanvas.current.getContext("2d");
         filterctx.clearRect(0, 0, filterWidth, filterHeight);
         drawFilter();
+      }
+      let envelope = test.envelopes[envelopeIndex];
+      let ramp = envelope.ramps[rampIndex];
+      if (ramp.type !== rampTypes[rampType] || updateEnvelope) {
+        ramp.type = rampTypes[rampType];
+        setUpdateEnvelope(false);
+        envelopectx = envelopeCanvas.current.getContext("2d");
+        envelopectx.clearRect(0, 0, envelopeWidth, envelopeHeight);
+        drawEnvelope();
       }
     }
   });
@@ -372,14 +489,19 @@ export default function Synth() {
             onChange={(e) => {
               setFlicker(!flicker);
               test.waves[waveIndex].detune = parseInt(e.target.value);
-              let isSemitones =
-                test.waves[waveIndex].detuneType === "semitones";
               for (let i = 0; i < test.instancePlaying.length; i++) {
                 let wave = test.instancePlaying[i][waveIndex];
                 let frequency =
                   wave.oscillatorNode.frequency.value /
                   Math.pow(0.5, wave.pitchBend);
-                if (isSemitones) {
+                if (test.waves[waveIndex].detuneType === "cents") {
+                  let detune = (wave.detune / 100) * 12;
+                  let MIDI =
+                    HztoMIDI(frequency) -
+                    detune +
+                    (parseInt(e.target.value) / 100) * 12;
+                  frequency = MIDItoHz(MIDI);
+                } else if (test.waves[waveIndex].detuneType === "semitones") {
                   let MIDI =
                     HztoMIDI(frequency) -
                     wave.detune +
@@ -407,6 +529,7 @@ export default function Synth() {
           >
             <option value="hz">hz</option>
             <option value="semitones">semitones</option>
+            <option value="cents">cents</option>
           </select>
           <button
             id="subWave"
@@ -425,6 +548,7 @@ export default function Synth() {
 
               test.waves.splice(index, 1);
               if (index > 0) {
+                66
                 index--;
               }
               setWaveType(waveTypes.indexOf(test.waves[index].type));
@@ -458,8 +582,8 @@ export default function Synth() {
               );
             })
           ) : (
-            <div></div>
-          )}
+              <div></div>
+            )}
         </div>
       </div>
       <div id="filterController">
@@ -583,71 +707,71 @@ export default function Synth() {
         <div id="filterSub">
           {test ? (
             filterTypes[filterType] !== "lowshelf" &&
-            filterTypes[filterType] !== "highshelf" ? (
-              <div id="container">
-                <h5 id="optionalContainer">{"Q: "}</h5>
-                <input
-                  id="filterQ"
-                  type="number"
-                  value={test ? test.filters[filterIndex].Q : 1}
-                  onChange={(e) => {
-                    setUpdateFilter(true);
-                    let value = parseInt(e.target.value);
-                    test.filters[filterIndex].Q = value;
-                    test.filters[filterIndex].filter.Q.value = value;
-                    for (let i = 0; i < test.filtersUsed.length; i++) {
-                      if (test.filtersUsed[i].includes(filterIndex)) {
-                        let index = test.filtersUsed[i].indexOf(filterIndex);
-                        for (let j = 0; j < test.instancePlaying.length; j++) {
-                          test.instancePlaying[j][i].filters[
-                            index
-                          ].filter.Q.value = value;
+              filterTypes[filterType] !== "highshelf" ? (
+                <div id="container">
+                  <h5 id="optionalContainer">{"Q: "}</h5>
+                  <input
+                    id="filterQ"
+                    type="number"
+                    value={test ? test.filters[filterIndex].Q : 1}
+                    onChange={(e) => {
+                      setUpdateFilter(true);
+                      let value = parseInt(e.target.value);
+                      test.filters[filterIndex].Q = value;
+                      test.filters[filterIndex].filter.Q.value = value;
+                      for (let i = 0; i < test.filtersUsed.length; i++) {
+                        if (test.filtersUsed[i].includes(filterIndex)) {
+                          let index = test.filtersUsed[i].indexOf(filterIndex);
+                          for (let j = 0; j < test.instancePlaying.length; j++) {
+                            test.instancePlaying[j][i].filters[
+                              index
+                            ].filter.Q.value = value;
+                          }
                         }
                       }
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <div />
-            )
+                    }}
+                  />
+                </div>
+              ) : (
+                <div />
+              )
           ) : (
-            <div />
-          )}
+              <div />
+            )}
           {test ? (
             filterTypes[filterType] === "lowshelf" ||
-            filterTypes[filterType] === "highshelf" ||
-            filterTypes[filterType] === "peaking" ? (
-              <div id="container">
-                <h5 id="optionalContainer">{"Gain: "}</h5>
-                <input
-                  id="filterGain"
-                  type="number"
-                  value={test ? test.filters[filterIndex].gain : 1}
-                  onChange={(e) => {
-                    setUpdateFilter(true);
-                    let value = parseInt(e.target.value);
-                    test.filters[filterIndex].gain = value;
-                    test.filters[filterIndex].filter.gain.value = value;
-                    for (let i = 0; i < test.filtersUsed.length; i++) {
-                      if (test.filtersUsed[i].includes(filterIndex)) {
-                        let index = test.filtersUsed[i].indexOf(filterIndex);
-                        for (let j = 0; j < test.instancePlaying.length; j++) {
-                          test.instancePlaying[j][i].filters[
-                            index
-                          ].filter.gain.value = value;
+              filterTypes[filterType] === "highshelf" ||
+              filterTypes[filterType] === "peaking" ? (
+                <div id="container">
+                  <h5 id="optionalContainer">{"Gain: "}</h5>
+                  <input
+                    id="filterGain"
+                    type="number"
+                    value={test ? test.filters[filterIndex].gain : 1}
+                    onChange={(e) => {
+                      setUpdateFilter(true);
+                      let value = parseInt(e.target.value);
+                      test.filters[filterIndex].gain = value;
+                      test.filters[filterIndex].filter.gain.value = value;
+                      for (let i = 0; i < test.filtersUsed.length; i++) {
+                        if (test.filtersUsed[i].includes(filterIndex)) {
+                          let index = test.filtersUsed[i].indexOf(filterIndex);
+                          for (let j = 0; j < test.instancePlaying.length; j++) {
+                            test.instancePlaying[j][i].filters[
+                              index
+                            ].filter.gain.value = value;
+                          }
                         }
                       }
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <div />
-            )
+                    }}
+                  />
+                </div>
+              ) : (
+                <div />
+              )
           ) : (
-            <div />
-          )}
+              <div />
+            )}
         </div>
         <div id="filterAddSub">
           <button
@@ -662,6 +786,7 @@ export default function Synth() {
           <button
             id="subFilter"
             onClick={() => {
+              setUpdateFilter(true);
               let index = filterIndex;
               if (test.filters.length === 1) {
                 return;
@@ -722,8 +847,276 @@ export default function Synth() {
               );
             })
           ) : (
-            <div></div>
+              <div></div>
+            )}
+        </div>
+      </div>
+      <div id="envelopeController">
+        <canvas
+          id="envelopeDisp"
+          ref={envelopeCanvas}
+          width={envelopeWidth}
+          height={envelopeHeight}
+        />
+        <div id="envelopeSwitcher">
+          <button
+            id="envelopeLeft"
+            onClick={() => {
+              setUpdateWave(true);
+              if (rampIndex === 0) {
+                if (rampType === 0) {
+                  test.envelopes[envelopeIndex].ramps[0].type = rampTypes[2];
+                } else {
+                  test.envelopes[envelopeIndex].ramps[0].type = rampTypes[rampType - 1];
+                }
+              }
+              if (rampType === 0) {
+                setRampType(2);
+              } else {
+                setRampType(rampType - 1);
+              }
+            }}
+            className="ui button"
+          >
+            <i class="angle double left icon"></i>
+          </button>
+          <div id="rampTypes">
+            <p>{rampTypes[rampType]}</p>
+          </div>
+          <button
+            onClick={() => {
+              setUpdateWave(true);
+              if (rampIndex === 0) {
+                if (rampType === 2) {
+                  test.envelopes[envelopeIndex].ramps[0].type = rampTypes[0];
+                } else {
+                  test.envelopes[envelopeIndex].ramps[0].type = rampTypes[rampType + 1];
+                }
+              }
+              if (rampType === 2) {
+                setRampType(0);
+              } else {
+                setRampType(rampType + 1);
+              }
+            }}
+            className="ui button"
+          >
+            <i class="angle double right icon"></i>
+          </button>
+        </div>
+        <div id="envelopeValue">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={test ? test.envelopes[envelopeIndex].ramps[rampIndex].value * 100 : 100}
+            onChange={(e) => {
+              setUpdateEnvelope(true);
+              test.envelopes[envelopeIndex].ramps[rampIndex].value = e.target.value / 100;
+            }}
+          />
+          <button
+            id="addEnvelope"
+            onClick={() => {
+              setUpdateEnvelope(true);
+              test.addEnvelope(Audio);
+              expanded.push(false);
+            }}
+          >
+            <i id="whiteIcon" class="plus icon"></i>
+          </button>
+        </div>
+        <div>
+          <input
+            id="envelopeTime"
+            type="number"
+            value={test ? test.envelopes[envelopeIndex].ramps[rampIndex].time * 1000 : 1000}
+            onChange={(e) => {
+              setUpdateEnvelope(true);
+              test.envelopes[envelopeIndex].ramps[rampIndex].time = parseInt(e.target.value) / 1000;
+            }}
+          />
+          <select id="envElem" value={elemTypes[elemType]} onChange={e => {
+            setElemType(elemTypes.indexOf(e.target.value));
+            setElemIndex(0);
+          }}>
+            {elemTypes.map((elem) => {
+              return <option value={elem}>{elem}</option>;
+            })}
+          </select>
+          <button
+            id="subEnvelope"
+            onClick={() => {
+              if (test.envelopes.length === 1) {
+                return;
+              }
+              test.envelopes.splice(envelopeIndex, 1);
+              expanded.splice(envelopeIndex, 1);
+              if (envelopeIndex >= 1) {
+                setRampType(rampTypes.indexOf(test.envelopes[envelopeIndex - 1].ramps[0].type))
+                setEnvelopeIndex(envelopeIndex - 1);
+              } else {
+                setRampType(rampTypes.indexOf(test.envelopes[0].ramps[0].type))
+              }
+              setUpdateEnvelope(true);
+            }}
+          >
+            <i id="whiteIcon" class="minus icon"></i>
+          </button>
+        </div>
+        <div>
+          <input
+            id="envelopeScale"
+            type="number"
+            value={test ? test.envelopes[envelopeIndex].ramps[rampIndex].scale : 1}
+            onChange={(e) => {
+              setUpdateEnvelope(true);
+              test.envelopes[envelopeIndex].ramps[rampIndex].scale = parseInt(e.target.value);
+            }}
+          />
+          <select id="envIndex"
+            value={elemIndex}
+            onChange={(e) => {
+              setElemIndex(parseInt(e.target.value));
+            }}
+          >
+            {(elemTypes[elemType] === "wave") && test && (
+              test.waves.map((wave, index) => {
+                return <option value={index}>{index +
+                  " - " +
+                  (waveIndex === index ? waveTypes[waveType] : wave.type)}</option>
+              })
+            )}
+            {(elemTypes[elemType] === "filter") && test && (
+              test.filters.map((filter, index) => {
+                return <option value={index}>{index +
+                  " - " +
+                  (filterIndex === index ? filterTypes[filterType] : filter.type)}</option>
+              })
+            )}
+          </select>
+        </div>
+        <div id="envelopeParam">
+          <button
+            id="envelopeLink"
+            onClick={() => {
+            }}
+            className="ui button"
+          >
+            <i class="exchange alternate icon" />
+          </button>
+          <button
+            id="envelopeUnlink"
+            onClick={() => { }}
+            className="ui button"
+          >
+            <i class="unlink icon" />
+          </button>
+          {(elemTypes[elemType] === "wave") && (
+            <select id="envParam"
+              value={waveParams[waveParam]}
+              onChange={(e) => {
+                setWaveParam(parseInt(e.target.value));
+              }}
+            >
+              {waveParams.map((params, index) => {
+                return <option value={index}>{params}</option>
+              })}
+            </select>
           )}
+          {(elemTypes[elemType] === "filter") && (
+            <select id="envParam"
+              value={filterParams[filterParam]}
+              onChange={(e) => {
+                setFilterParam(parseInt(e.target.value));
+              }}
+            >
+              {filterParams.map((params, index) => {
+                return <option value={index}>{params}</option>
+              })}
+            </select>
+          )}
+        </div>
+        <div id="envelopeContainer">
+          {test ? (
+            test.envelopes.map((env, index) => {
+              return (
+                <div>
+                  <div id={index === envelopeIndex ? "selectedEnvelope" : "envelope"}
+                    onClick={() => {
+                      if (index === envelopeIndex) {
+                        return;
+                      }
+                      setRampType(rampTypes.indexOf(env.ramps[0].type));
+                      setEnvelopeIndex(index);
+                      setUpdateEnvelope(true);
+                    }}
+                    className="ui segment"
+                  >
+                    {(expanded[index] === true) ? (
+                      <div id="minimizeButton"
+                        onClick={() => {
+                          expanded[index] = false;
+                          setFlicker(!flicker);
+                        }}><i class="angle down large icon"></i></div>) : (
+                        <div id="expandButton"
+                          onClick={() => {
+                            expanded[index] = true;
+                            setFlicker(!flicker);
+                          }}><i class="angle up large icon"></i></div>
+                      )}
+                    {index + " - " + env.ramps[0].type}
+                    {(expanded[index] === true) ? (
+                      <div id="addRampBelow" onClick={() => {
+                        env.addRamp("const", env.initialValue, 0.33, 1, false, [], 0);
+                        setRampIndex(0);
+                        setUpdateEnvelope(true);
+                      }}><i class="plus large icon"></i></div>
+                    ) : <div></div>}
+                  </div>
+                  {
+                    (expanded[index] === true) ? (env.ramps.map((ramp, rindex) => {
+                      return (
+                        <div id={ramp.hold ? "holdRamp" : rindex === rampIndex ? "selectedRamp" : "ramp"}
+                          onClick={() => {
+                            setUpdateEnvelope(true);
+                            if (rindex === rampIndex && !isRemoving) {
+                              for (let i = 0; i < env.ramps.length; i++) {
+                                env.ramps[i].hold = false;
+                              }
+                              ramp.hold = true;
+                              return;
+                            }
+                            setRampType(rampTypes.indexOf(ramp.type));
+                            setRampIndex(Math.min(rindex, env.ramps.length - 1));
+                            setEnvelopeIndex(index);
+                            if (isRemoving) {
+                              isRemoving = false;
+                              setRampType(rampTypes.indexOf(env.ramps[Math.min(rindex, env.ramps.length - 1)].type));
+                            }
+                          }}
+                          className="ui segment"
+                        >
+                          {rindex + " - " + (rampIndex === rindex ? rampTypes[rampType] : ramp.type)}
+                          <div id="addRampBelow" onClick={() => {
+                            env.addRamp("const", ramp.value, 0.33, 1, false, [], rindex + 1);
+                            setUpdateEnvelope(true);
+                          }}><i class="plus large icon"></i></div>
+                          <div id="removeRamp" onClick={() => {
+                            if (env.ramps.length === 1) {
+                              return;
+                            }
+                            env.ramps.splice(rindex, 1);
+                            setUpdateEnvelope(true);
+                            isRemoving = true;
+                          }}><i class="minus large icon"></i></div>
+                        </div>
+                      );
+                    })) : <div></div>
+                  }
+                </div>
+              )
+            })) : <div></div>}
         </div>
       </div>
       <div id="disp">
@@ -740,6 +1133,6 @@ export default function Synth() {
           height={audioHeight}
         />
       </div>
-    </div>
+    </div >
   );
 }

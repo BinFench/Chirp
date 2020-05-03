@@ -1,10 +1,12 @@
 import Wave from "./Wave";
 import Filter from "./Filter";
+import Envelope from "./Envelope";
 
 class Instrument {
   constructor() {
     this.waves = [];
     this.filters = [];
+    this.envelopes = [];
     this.filtersUsed = [];
     this.gain = 1;
     this.instancePlaying = [];
@@ -30,6 +32,10 @@ class Instrument {
   ) {
     this.filters.push(new Filter(audio, freq, type, detune, Q, gain));
     this.filters[this.filters.length - 1].remove();
+  }
+
+  addEnvelope(audio) {
+    this.envelopes.push(new Envelope(audio));
   }
 
   play(freq, velocity) {
@@ -72,7 +78,7 @@ class Instrument {
       for (let j = 0; j < this.instancePlaying[i].length; j++) {
         let baseFreq =
           this.instancePlaying[i][j].oscillatorNode.frequency.value /
-            Math.pow(0.5, this.instancePlaying[i][j].pitchBend) -
+          Math.pow(0.5, this.instancePlaying[i][j].pitchBend) -
           this.instancePlaying[i][j].detune;
         this.instancePlaying[i][j].pitchBend = freq;
         this.instancePlaying[i][j].oscillatorNode.frequency.setValueAtTime(

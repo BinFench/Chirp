@@ -69,7 +69,12 @@ class Wave {
 
   play(freq, velocity) {
     let frequency = freq;
-    if (this.detuneType === "semitones") {
+    if (this.detuneType === "cents") {
+      let detune = (this.detune / 100) * 12;
+      frequency =
+        MIDItoHz(HztoMIDI(frequency) + this.detune) *
+        Math.pow(0.5, this.pitchBend);
+    } else if (this.detuneType === "semitones") {
       frequency =
         MIDItoHz(HztoMIDI(frequency) + this.detune) *
         Math.pow(0.5, this.pitchBend);
