@@ -547,8 +547,9 @@ export default function Synth() {
               }
 
               test.waves.splice(index, 1);
+              test.filtersUsed.splice(index, 1);
+              test.envelopesUsedWaves.splice(index, 1);
               if (index > 0) {
-                66
                 index--;
               }
               setWaveType(waveTypes.indexOf(test.waves[index].type));
@@ -1000,6 +1001,11 @@ export default function Synth() {
           <button
             id="envelopeLink"
             onClick={() => {
+              if (elemTypes[elemType] === "wave") {
+                test.envelopes[envelopeIndex].link("wave", elemIndex, waveParams[waveParam]);
+              } else if (elemTypes[elemType] === "filter") {
+                test.envelopes[envelopeIndex].link("filter", elemIndex, filterParams[filterParam]);
+              }
             }}
             className="ui button"
           >
@@ -1007,7 +1013,13 @@ export default function Synth() {
           </button>
           <button
             id="envelopeUnlink"
-            onClick={() => { }}
+            onClick={() => {
+              if (elemTypes[elemType] === "wave") {
+                test.envelopes[envelopeIndex].unlink("wave", elemIndex, waveParams[waveParam]);
+              } else if (elemTypes[elemType] === "filter") {
+                test.envelopes[envelopeIndex].unlink("filter", elemIndex, filterParams[filterParam]);
+              }
+            }}
             className="ui button"
           >
             <i class="unlink icon" />
@@ -1081,10 +1093,11 @@ export default function Synth() {
                           onClick={() => {
                             setUpdateEnvelope(true);
                             if (rindex === rampIndex && !isRemoving) {
+                              let doubleClick = ramp.hold;
                               for (let i = 0; i < env.ramps.length; i++) {
                                 env.ramps[i].hold = false;
                               }
-                              ramp.hold = true;
+                              ramp.hold = !doubleClick;
                               return;
                             }
                             setRampType(rampTypes.indexOf(ramp.type));

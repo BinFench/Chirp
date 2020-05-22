@@ -6,8 +6,10 @@ class Instrument {
   constructor() {
     this.waves = [];
     this.filters = [];
-    this.envelopes = [];
     this.filtersUsed = [];
+    this.envelopes = [];
+    this.envelopesUsedWaves = [];
+    this.envelopesUsedFilters = [];
     this.gain = 1;
     this.instancePlaying = [];
     this.instanceFreq = [];
@@ -20,6 +22,7 @@ class Instrument {
     );
     this.waves[this.waves.length - 1].remove();
     this.filtersUsed.push([-1]);
+    this.envelopesUsedWaves.push([-1]);
   }
 
   addFilter(
@@ -32,6 +35,7 @@ class Instrument {
   ) {
     this.filters.push(new Filter(audio, freq, type, detune, Q, gain));
     this.filters[this.filters.length - 1].remove();
+    this.envelopesUsedFilters.push([-1]);
   }
 
   addEnvelope(audio) {
