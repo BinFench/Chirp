@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
-    "electron": "^1.8.8",
+    "electron": "^13.6.6",
     "foreman": "^3.0.1",
     "react-dial-knob": "^1.1.2",
     "react-scripts": "0.8.5"
